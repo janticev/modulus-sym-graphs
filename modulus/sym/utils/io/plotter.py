@@ -82,8 +82,13 @@ class ValidatorPlotter(_Plotter):
 
         ndim = len(invar)
         if ndim > 2:
-            print("Default plotter can only handle <=2 input dimensions, passing")
-            return []
+            if ('x' in invar.keys()) and ('y' in invar.keys()):
+                print(">2 input dims, trying to use x and y")
+                invar = {k:v for k,v in invar.items() if k in ['x','y']}
+                ndim = len(invar)
+            else:
+                print("Default plotter can only handle <=2 input dimensions, passing")
+                return []
 
         # interpolate 2D data onto grid
         if ndim == 2:
@@ -126,8 +131,13 @@ class InferencerPlotter(_Plotter):
 
         ndim = len(invar)
         if ndim > 2:
-            print("Default plotter can only handle <=2 input dimensions, passing")
-            return []
+            if ('x' in invar.keys()) and ('y' in invar.keys()):
+                print(">2 input dims, trying to use x and y")
+                invar = {k:v for k,v in invar.items() if k in ['x','y']}
+                ndim = len(invar)
+            else:
+                print("Default plotter can only handle <=2 input dimensions, passing")
+                return []
 
         # interpolate 2D data onto grid
         if ndim == 2:

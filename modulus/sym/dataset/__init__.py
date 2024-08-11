@@ -23,5 +23,6 @@ from .continuous import (
     DictImportanceSampledPointwiseIterableDataset,
     DictVariationalDataset,
     DictInferencePointwiseDataset,
+    DictGraphImportanceSampledPointwiseIterableDataset,
 )
 from .discrete import DictGridDataset, HDF5GridDataset

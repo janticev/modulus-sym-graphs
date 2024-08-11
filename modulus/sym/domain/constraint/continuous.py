@@ -46,6 +46,8 @@ from modulus.sym.dataset import (
     ContinuousIntegralIterableDataset,
     DictImportanceSampledPointwiseIterableDataset,
     DictVariationalDataset,
+    ## __NEW__
+    DictGraphImportanceSampledPointwiseIterableDataset,
 )
 
 Tensor = torch.Tensor
@@ -56,7 +58,7 @@ class PointwiseConstraint(Constraint):
     """
     Base class for all Pointwise Constraints
     """
-
+    
     def save_batch(self, filename):
         # sample batch
         invar, true_outvar, lambda_weighting = next(self.dataloader)
@@ -133,6 +135,7 @@ class PointwiseConstraint(Constraint):
 
     def loss(self, step: int) -> Dict[str, torch.Tensor]:
         if self._output_vars is None:
+            print("WARNING LOSS WITHOUT FORWARD CALL")
             logger.warn("Calling loss without forward call")
             return {}
 
@@ -279,6 +282,9 @@ class PointwiseBoundaryConstraint(PointwiseConstraint):
         num_workers: int = 0,
         loss: Loss = PointwiseLossNorm(),
         shuffle: bool = True,
+        ##NEW
+        resample_freq: int = 20000,
+        seednum: int = 1000,
     ):
 
         # assert that not using importance measure with continuous dataset
@@ -320,6 +326,8 @@ class PointwiseBoundaryConstraint(PointwiseConstraint):
                     importance_measure=importance_measure,
                     lambda_weighting=lambda_weighting,
                     shuffle=shuffle,
+                    resample_freq = resample_freq,
+                    seednum=seednum
                 )
 
         # else sample points every batch
@@ -433,6 +441,24 @@ class PointwiseInteriorConstraint(PointwiseConstraint):
         num_workers: int = 0,
         loss: Loss = PointwiseLossNorm(),
         shuffle: bool = True,
+        ###### New Args
+        resample_freq: int = 20000, ##forgotten?
+        mapping_function: Union[Callable, None, str] = None,
+        KNN: int = 10, ##TODOj remove, see coarse_level, goal for avg reduction ratio (samples/cluster)
+        sample_ratio: float = .2, ##TODOj remove, threshold?
+        sample_bounds: List[float] = [5/100,70/100],
+        batch_iterations: int = 1000,
+        cluster_size: int = 20,
+        coarse_level: int = 1, ##TODOj remove
+        warmup: int = 1000, ##TODOj remove, track soln. changes? Slowdown?
+        initial_graph_vars: List[str] = [],
+        graph_vars: List[str] = ["x", "y", "z"],
+        SPADE_vars: List[str] = [],
+        LOSS_vars: List[str] = [],
+        local_grid_width: int = 2,
+        iterations_rebuild: int = 20000,
+        ######V sample
+        seednum: int = 1000,
     ):
 
         # assert that not using importance measure with continuous dataset
@@ -468,6 +494,31 @@ class PointwiseInteriorConstraint(PointwiseConstraint):
                     outvar=outvar,
                     lambda_weighting=lambda_weighting,
                 )
+            elif not (mapping_function is None):
+                #invar["area"] *= batch_per_epoch
+                #print('SET AREA SAME AS DEFAULT METHOD')
+                dataset = DictGraphImportanceSampledPointwiseIterableDataset(
+                    invar=invar,
+                    outvar=outvar,
+                    batch_size=batch_size,
+                    importance_measure=importance_measure,
+                    lambda_weighting=lambda_weighting,
+                    shuffle=shuffle,
+                    KNN=KNN,
+                    sample_ratio=sample_ratio,
+                    sample_bounds=sample_bounds,
+                    batch_iterations=batch_iterations,
+                    cluster_size=cluster_size,
+                    coarse_level=coarse_level,
+                    warmup=warmup,
+                    initial_graph_vars=initial_graph_vars,
+                    graph_vars=graph_vars,
+                    SPADE_vars=SPADE_vars,
+                    LOSS_vars=LOSS_vars,
+                    local_grid_width=local_grid_width,
+                    iterations_rebuild=iterations_rebuild,
+                    batch_per_epoch=batch_per_epoch
+                )
             else:
                 dataset = DictImportanceSampledPointwiseIterableDataset(
                     invar=invar,
@@ -475,7 +526,8 @@ class PointwiseInteriorConstraint(PointwiseConstraint):
                     batch_size=batch_size,
                     importance_measure=importance_measure,
                     lambda_weighting=lambda_weighting,
-                    shuffle=shuffle,
+                    resample_freq = resample_freq,
+                    seednum=seednum
                 )
 
         # else sample points every batch
